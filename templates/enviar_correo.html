@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block title %}Enviar Correo{% endblock %}
+{% block content %}
+    <h2><i class="fa fa-paper-plane"></i> Enviar un Correo</h2>
+    <p>Desde aquí puedes enviar un correo a cualquier dirección.</p>
+    
+    <form method="post">
+        <div class="input-group">
+            <i class="fa fa-at"></i>
+            <input type="email" id="destinatario" name="destinatario" placeholder="Para (Email)" required>
+        </div>
+        <div class="input-group">
+            <i class="fa fa-heading"></i>
+            <input type="text" id="asunto" name="asunto" placeholder="Asunto" required>
+        </div>
+        
+        <textarea id="cuerpo" name="cuerpo" rows="6" placeholder="Escribe tu mensaje aquí..." required></textarea>
+        
+        <button type="submit">Enviar Correo</button>
+    </form>
+{% endblock %}
