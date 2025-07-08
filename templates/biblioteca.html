@@ -1,9 +1,6 @@
 {% extends "layout.html" %}
 {% block title %}Biblioteca{% endblock %}
-
-{# Hacemos el contenedor más ancho para la biblioteca #}
-{% block container_class %}<div class="container container-wide">{% endblock %}
-
+{% block container_class %}container-wide{% endblock %}
 {% block content %}
     <h2><i class="fa fa-book-open"></i> Biblioteca de Contenidos</h2>
     <p style="text-align: center; margin-bottom: 30px;">Bienvenido, {{ current_user.nombre }}! Explora el material disponible.</p>
@@ -13,7 +10,6 @@
         <h3 style="color: var(--primary-accent); border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-top: 0;">{{ libro.titulo }}</h3>
         <p>{{ libro.descripcion }}</p>
         
-        <!-- Visor de PDF embebido -->
         <div class="pdf-viewer" style="border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; margin-top: 15px; min-height: 500px;">
             <embed src="/static/pdfs/{{ libro.archivo }}" type="application/pdf" width="100%" height="500px" />
         </div>
@@ -22,14 +18,12 @@
         <hr style="border: none; border-top: 1px solid var(--border-color); margin: 30px 0;">
 
         <h4><i class="fa fa-comments"></i> Comentarios</h4>
-        <!-- Formulario para añadir un nuevo comentario -->
         <form action="{{ url_for('agregar_comentario') }}" method="post" style="margin-top: 15px;">
             <input type="hidden" name="nombre_libro" value="{{ libro.archivo }}">
             <textarea name="contenido" rows="3" placeholder="Escribe un comentario..." required></textarea>
             <button type="submit" style="width: auto; padding: 10px 20px; margin-top: 10px; font-size: 0.9em;">Comentar</button>
         </form>
 
-        <!-- Lista de comentarios existentes -->
         <div style="margin-top: 20px;">
             {% for comentario in comentarios if comentario.book_filename == libro.archivo %}
                 <div style="border-top: 1px solid var(--border-color); padding: 15px 0;">
