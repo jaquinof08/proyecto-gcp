@@ -1,14 +1,19 @@
-# --- app.yaml (Actualizado para usar SendGrid de forma segura) ---
+# --- app.yaml (Versión Segura y Final) ---
 runtime: python311
 entrypoint: gunicorn -b :$PORT app:app
 
+# Variables de entorno que pasaremos a nuestra aplicación
 env_variables:
-  # La URL de la base de datos sigue igual
+  # La URL de la base de datos
   DATABASE_URL: >-
     postgresql+psycopg2://postgres:XS-O?nv)en#qsj-6@/postgres?host=/cloudsql/proyecto-de-plataformas-465221:southamerica-west1:db-proyecto-plataformas
   
-  # La clave de API de SendGrid ha sido removida.
-  # Ahora se cargará de forma segura desde Google Secret Manager.
+  # La clave de API de SendGrid ha sido removida de este archivo.
+  # Ahora se cargará de forma segura desde Google Secret Manager,
+  # como está configurado en el archivo app.py.
 
 beta_settings:
   cloud_sql_instances: proyecto-de-plataformas-465221:southamerica-west1:db-proyecto-plataformas
+
+
+
