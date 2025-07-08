@@ -133,7 +133,6 @@ def biblioteca():
             "archivo": "PlataformasDigitales.pdf"
         }
     ]
-    # Obtener todos los comentarios de la base de datos
     comentarios = Comment.query.order_by(Comment.timestamp.desc()).all()
     return render_template('biblioteca.html', libros=lista_de_libros, comentarios=comentarios)
 
