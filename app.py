@@ -1,4 +1,4 @@
-# --- app.py (Versión Final con Correo de SendGrid Corregido) ---
+# --- app.py (Versión de Prueba Final - SIN SECRET MANAGER) ---
 
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -7,14 +7,13 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
-# Nuevas importaciones para SendGrid
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-# --- CONFIGURACIÓN INICIAL ---
+# --- CONFIGURACIÓN INICIAL (SIMPLIFICADA) ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una-llave-secreta-muy-dificil-de-adivinar'
-db_url = os.environ.get("DATABASE_URL", "sqlite:///test.db")
+db_url = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -22,7 +21,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, inicia sesión para acceder a esta página."
 
-# --- MODELOS DE LA BASE DE DATOS ---
+# --- MODELOS DE LA BASE DE DATOS (SIN CAMBIOS) ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(80), nullable=False)
@@ -47,7 +46,7 @@ class Comment(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- RUTAS DE AUTENTICACIÓN ---
+# --- RUTAS DE AUTENTICACIÓN (SIN CAMBIOS) ---
 @app.route('/')
 def index():
     return redirect(url_for('register'))
@@ -79,14 +78,14 @@ def register():
             db.session.add(new_user)
             db.session.commit()
 
-            # --- LÓGICA DE CORREO DE BIENVENIDA ---
             try:
                 message = Mail(
-                    from_email='josephzx12@gmail.com',  # <-- CORREO VERIFICADO EN SENDGRID
+                    from_email='josephzx12@gmail.com',
                     to_emails=new_user.email,
                     subject='¡Cuenta Creada Exitosamente en la Plataforma!',
                     html_content=f'Hola {new_user.nombre},<br><br>Tu cuenta ha sido creada. Ya puedes iniciar sesión.'
                 )
+                # La clave se lee directamente de la variable de entorno que define app.yaml
                 sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
                 response = sg.send(message)
                 print(f"Correo de bienvenida enviado, código: {response.status_code}")
@@ -109,7 +108,7 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- RUTAS DE LA APLICACIÓN ---
+# --- RUTAS DE LA APLICACIÓN (SIN CAMBIOS) ---
 @app.route('/biblioteca')
 @login_required
 def biblioteca():
@@ -137,9 +136,8 @@ def enviar_correo():
         asunto = request.form['asunto']
         cuerpo = request.form['cuerpo']
         try:
-            # --- LÓGICA PARA ENVIAR CORREO DESDE LA PLATAFORMA ---
             message = Mail(
-                from_email='josephzx12@gmail.com', # <-- CORREO VERIFICADO EN SENDGRID
+                from_email='josephzx12@gmail.com',
                 to_emails=destinatario,
                 subject=asunto,
                 html_content=f"<i>Este correo fue enviado desde la plataforma por {current_user.nombre}.</i><br><br>{cuerpo}"
