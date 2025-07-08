@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block title %}Biblioteca{% endblock %}
+{% block content %}
+    <h2>📚 Biblioteca de Libros</h2>
+    <p>Bienvenido, {{ current_user.nombre }}!</p>
+
+    {% for libro in libros %}
+    <div style="border: 1px solid #333; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+        <h3>{{ libro.titulo }}</h3>
+        <p>{{ libro.descripcion }}</p>
+        <a href="/static/pdfs/{{ libro.archivo }}" target="_blank" style="margin-right: 15px;">Ver PDF</a>
+    </div>
+    {% endfor %}
+
+    <p style="text-align: center; margin-top: 30px;">
+        <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
+    </p>
+{% endblock %}
