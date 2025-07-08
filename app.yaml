@@ -1,16 +1,14 @@
-# Versión del runtime de Python que usará App Engine
+# --- app.yaml (Actualizado para usar SendGrid de forma segura) ---
 runtime: python311
-
-# Comando para iniciar la aplicación web
 entrypoint: gunicorn -b :$PORT app:app
 
-# Variables de entorno que pasaremos a nuestra aplicación
 env_variables:
-  # Esta es la URL de conexión completa para nuestra base de datos
-  # SQLAlchemy la usará para conectarse.
+  # La URL de la base de datos sigue igual
   DATABASE_URL: >-
     postgresql+psycopg2://postgres:plataformasH1@/postgres?host=/cloudsql/proyecto-de-plataformas-465221:southamerica-west1:db-proyecto-plataformas
+  
+  # La clave de API de SendGrid ha sido removida.
+  # Ahora se cargará de forma segura desde Google Secret Manager.
 
-# Configuración para la conexión con Cloud SQL
 beta_settings:
   cloud_sql_instances: proyecto-de-plataformas-465221:southamerica-west1:db-proyecto-plataformas
