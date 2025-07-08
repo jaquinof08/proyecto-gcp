@@ -1,4 +1,4 @@
-# --- app.py (Versión Segura y Final) ---
+# --- app.py (Versión Final con Correo de SendGrid Corregido) ---
 
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -7,36 +7,14 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+# Nuevas importaciones para SendGrid
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-
-# --- LÓGICA PARA CARGAR SECRETOS DE FORMA SEGURA ---
-# Esta sección solo se ejecuta cuando la aplicación corre en Google Cloud
-if os.environ.get('GAE_ENV', '').startswith('standard'):
-    try:
-        from google.cloud import secretmanager
-        
-        # Función para acceder al valor del secreto
-        def access_secret_version(project_id, secret_id, version_id="latest"):
-            client = secretmanager.SecretManagerServiceClient()
-            name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-            response = client.access_secret_version(request={"name": name})
-            return response.payload.data.decode("UTF-8")
-
-        # Obtenemos el secreto y lo ponemos en una variable de entorno para que la app lo use
-        project_id = "proyecto-de-plataformas-465221"
-        sendgrid_api_key = access_secret_version(project_id, "SENDGRID_API_KEY")
-        os.environ['SENDGRID_API_KEY'] = sendgrid_api_key
-        
-    except Exception as e:
-        print(f"No se pudo cargar la clave de API desde Secret Manager: {e}")
-# --- FIN DE LA SECCIÓN DE SECRETOS ---
-
 
 # --- CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una-llave-secreta-muy-dificil-de-adivinar'
-db_url = os.environ.get("DATABASE_URL")
+db_url = os.environ.get("DATABASE_URL", "sqlite:///test.db")
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -101,9 +79,10 @@ def register():
             db.session.add(new_user)
             db.session.commit()
 
+            # --- LÓGICA DE CORREO DE BIENVENIDA ---
             try:
                 message = Mail(
-                    from_email='tu_correo_verificado@example.com',
+                    from_email='josephzx12@gmail.com',  # <-- CORREO VERIFICADO EN SENDGRID
                     to_emails=new_user.email,
                     subject='¡Cuenta Creada Exitosamente en la Plataforma!',
                     html_content=f'Hola {new_user.nombre},<br><br>Tu cuenta ha sido creada. Ya puedes iniciar sesión.'
@@ -158,8 +137,9 @@ def enviar_correo():
         asunto = request.form['asunto']
         cuerpo = request.form['cuerpo']
         try:
+            # --- LÓGICA PARA ENVIAR CORREO DESDE LA PLATAFORMA ---
             message = Mail(
-                from_email='tu_correo_verificado@example.com',
+                from_email='josephzx12@gmail.com', # <-- CORREO VERIFICADO EN SENDGRID
                 to_emails=destinatario,
                 subject=asunto,
                 html_content=f"<i>Este correo fue enviado desde la plataforma por {current_user.nombre}.</i><br><br>{cuerpo}"
