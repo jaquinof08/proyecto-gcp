@@ -5,11 +5,11 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+# Nuevas importaciones para SendGrid
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 # --- CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
@@ -23,23 +23,19 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, inicia sesión para acceder a esta página."
 
 # --- MODELOS DE LA BASE DE DATOS ---
-
-# Modelo para los Usuarios
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(80), nullable=False)
     apellido = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False) # Límite aumentado
+    password_hash = db.Column(db.String(256), nullable=False)
     comments = db.relationship('Comment', backref='author', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-# Nuevo Modelo para los Comentarios
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
@@ -52,12 +48,9 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- RUTAS DE AUTENTICACIÓN ---
-
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('biblioteca'))
-    return redirect(url_for('login'))
+    return redirect(url_for('register'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -86,24 +79,19 @@ def register():
             db.session.add(new_user)
             db.session.commit()
 
-            # Enviar correo de confirmación
+            # --- LÓGICA DE CORREO ACTUALIZADA CON SENDGRID ---
             try:
-                remitente = "tu_correo_de_envio@gmail.com"  # <<< ¡TU CORREO DE GMAIL!
-                password = "tu_contraseña_de_aplicacion"    # <<< ¡TU CONTRASEÑA DE APP!
-                
-                msg = MIMEMultipart()
-                msg['From'] = remitente
-                msg['To'] = new_user.email
-                msg['Subject'] = "¡Cuenta Creada Exitosamente en la Plataforma!"
-                cuerpo = f"Hola {new_user.nombre},\n\nTu cuenta ha sido creada exitosamente. Ya puedes iniciar sesión con tu correo y contraseña.\n\n¡Bienvenido!"
-                msg.attach(MIMEText(cuerpo, 'plain', 'utf-8'))
-                
-                with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-                    smtp.starttls()
-                    smtp.login(remitente, password)
-                    smtp.sendmail(remitente, new_user.email, msg.as_string())
+                message = Mail(
+                    from_email='tu_correo_verificado@example.com',  # <<< TU CORREO VERIFICADO EN SENDGRID
+                    to_emails=new_user.email,
+                    subject='¡Cuenta Creada Exitosamente en la Plataforma!',
+                    html_content=f'Hola {new_user.nombre},<br><br>Tu cuenta ha sido creada. Ya puedes iniciar sesión.'
+                )
+                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+                response = sg.send(message)
+                print(f"Correo de bienvenida enviado, código: {response.status_code}")
             except Exception as e:
-                print(f"Error enviando correo de confirmación: {e}")
+                print(f"Error enviando correo con SendGrid: {e}")
 
             flash('¡Cuenta creada! Por favor, inicia sesión.')
             return redirect(url_for('login'))
@@ -122,17 +110,10 @@ def logout():
     return redirect(url_for('login'))
 
 # --- RUTAS DE LA APLICACIÓN ---
-
 @app.route('/biblioteca')
 @login_required
 def biblioteca():
-    lista_de_libros = [
-        {
-            "titulo": "Libro de Plataformas Digitales",
-            "descripcion": "Contenido del curso y material de estudio.",
-            "archivo": "PlataformasDigitales.pdf"
-        }
-    ]
+    lista_de_libros = [{"titulo": "Libro de Plataformas Digitales", "descripcion": "Contenido del curso y material de estudio.", "archivo": "PlataformasDigitales.pdf"}]
     comentarios = Comment.query.order_by(Comment.timestamp.desc()).all()
     return render_template('biblioteca.html', libros=lista_de_libros, comentarios=comentarios)
 
@@ -142,11 +123,7 @@ def agregar_comentario():
     contenido = request.form.get('contenido')
     nombre_libro = request.form.get('nombre_libro')
     if contenido and nombre_libro:
-        nuevo_comentario = Comment(
-            content=contenido,
-            user_id=current_user.id,
-            book_filename=nombre_libro
-        )
+        nuevo_comentario = Comment(content=contenido, user_id=current_user.id, book_filename=nombre_libro)
         db.session.add(nuevo_comentario)
         db.session.commit()
         flash('Comentario añadido.')
@@ -159,31 +136,19 @@ def enviar_correo():
         destinatario = request.form['destinatario']
         asunto = request.form['asunto']
         cuerpo = request.form['cuerpo']
-        
         try:
-            remitente = "tu_correo_de_envio@gmail.com"  # <<< ¡TU CORREO DE GMAIL!
-            password = "tu_contraseña_de_aplicacion"    # <<< ¡TU CONTRASEÑA DE APP!
-            
-            msg = MIMEMultipart()
-            msg['From'] = remitente
-            msg['To'] = destinatario
-            msg['Subject'] = asunto
-            
-            cuerpo_completo = f"Este correo fue enviado desde la plataforma por {current_user.nombre} ({current_user.email}).\n\n---\n\n{cuerpo}"
-            msg.attach(MIMEText(cuerpo_completo, 'plain', 'utf-8'))
-            
-            with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
-                smtp.starttls()
-                smtp.login(remitente, password)
-                smtp.sendmail(remitente, destinatario, msg.as_string())
-            
+            message = Mail(
+                from_email='tu_correo_verificado@example.com', # <<< TU CORREO VERIFICADO EN SENDGRID
+                to_emails=destinatario,
+                subject=asunto,
+                html_content=f"<i>Este correo fue enviado desde la plataforma por {current_user.nombre}.</i><br><br>{cuerpo}"
+            )
+            sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+            response = sg.send(message)
             flash('Correo enviado exitosamente.')
         except Exception as e:
             print(f"Error al enviar correo: {e}")
-            flash('Error al enviar el correo. Revisa las credenciales o intenta más tarde.')
-            
-        return redirect(url_for('enviar_correo'))
-        
+            flash('Error al enviar el correo.')
     return render_template('enviar_correo.html')
 
 # --- INICIALIZACIÓN ---
