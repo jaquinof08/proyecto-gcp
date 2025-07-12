@@ -5,7 +5,7 @@ entrypoint: gunicorn -b :$PORT app:app
 env_variables:
   # La URL de la base de datos
   DATABASE_URL: >-
-    postgresql+psycopg2://postgres:plataformasH1@/postgres?host=/cloudsql/proyecto-de-plataformas-465221:southamerica-west1:db-proyecto-plataformas
+    postgresql+psycopg2://postgres:E(C8a|M*413qF>m<@/postgres?host=/cloudsql/proyecto-de-plataformas-465221:southamerica-west1:db-proyecto-plataformas
   
   # La clave de API de SendGrid ha sido removida de este archivo.
   # Ahora se cargará de forma segura desde Google Secret Manager,
