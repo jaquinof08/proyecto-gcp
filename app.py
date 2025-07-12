@@ -1,4 +1,4 @@
-# --- app.py (Versión de Prueba Final - SIN SECRET MANAGER) ---
+# --- app.py (Versión Segura y Final) ---
 
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -10,7 +10,30 @@ from datetime import datetime
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-# --- CONFIGURACIÓN INICIAL (SIMPLIFICADA) ---
+# --- LÓGICA PARA CARGAR SECRETOS DE FORMA SEGURA ---
+# Esta sección solo se ejecuta cuando la aplicación corre en Google Cloud
+if os.environ.get('GAE_ENV', '').startswith('standard'):
+    try:
+        from google.cloud import secretmanager
+        
+        # Función para acceder al valor del secreto
+        def access_secret_version(project_id, secret_id, version_id="latest"):
+            client = secretmanager.SecretManagerServiceClient()
+            name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
+            response = client.access_secret_version(request={"name": name})
+            return response.payload.data.decode("UTF-8")
+
+        # Obtenemos el secreto y lo ponemos en una variable de entorno para que la app lo use
+        project_id = "proyecto-de-plataformas-465221"
+        sendgrid_api_key = access_secret_version(project_id, "SENDGRID_API_KEY")
+        os.environ['SENDGRID_API_KEY'] = sendgrid_api_key
+        
+    except Exception as e:
+        print(f"No se pudo cargar la clave de API desde Secret Manager: {e}")
+# --- FIN DE LA SECCIÓN DE SECRETOS ---
+
+
+# --- CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'una-llave-secreta-muy-dificil-de-adivinar'
 db_url = os.environ.get("DATABASE_URL")
@@ -21,7 +44,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, inicia sesión para acceder a esta página."
 
-# --- MODELOS DE LA BASE DE DATOS (SIN CAMBIOS) ---
+# --- MODELOS DE LA BASE DE DATOS ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(80), nullable=False)
@@ -46,7 +69,7 @@ class Comment(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- RUTAS DE AUTENTICACIÓN (SIN CAMBIOS) ---
+# --- RUTAS DE AUTENTICACIÓN ---
 @app.route('/')
 def index():
     return redirect(url_for('register'))
@@ -80,12 +103,11 @@ def register():
 
             try:
                 message = Mail(
-                    from_email='josephzx12@gmail.com',
+                    from_email='noreply@proyectosgcp.xyz', # Usando el dominio autenticado
                     to_emails=new_user.email,
                     subject='¡Cuenta Creada Exitosamente en la Plataforma!',
                     html_content=f'Hola {new_user.nombre},<br><br>Tu cuenta ha sido creada. Ya puedes iniciar sesión.'
                 )
-                # La clave se lee directamente de la variable de entorno que define app.yaml
                 sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
                 response = sg.send(message)
                 print(f"Correo de bienvenida enviado, código: {response.status_code}")
@@ -108,7 +130,7 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- RUTAS DE LA APLICACIÓN (SIN CAMBIOS) ---
+# --- RUTAS DE LA APLICACIÓN ---
 @app.route('/biblioteca')
 @login_required
 def biblioteca():
@@ -137,7 +159,7 @@ def enviar_correo():
         cuerpo = request.form['cuerpo']
         try:
             message = Mail(
-                from_email='josephzx12@gmail.com',
+                from_email='noreply@proyectosgcp.xyz', # Usando el dominio autenticado
                 to_emails=destinatario,
                 subject=asunto,
                 html_content=f"<i>Este correo fue enviado desde la plataforma por {current_user.nombre}.</i><br><br>{cuerpo}"
