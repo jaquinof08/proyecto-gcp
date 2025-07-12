@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+{% block title %}Panel de Administración{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+    <h2><i class="fa fa-user-shield"></i> Panel de Administración</h2>
+    
+    <!-- Sección de Gestión de Libros -->
+    <div class="admin-section">
+        <h3>Gestión de Libros</h3>
+        <!-- Formulario para subir un nuevo libro -->
+        <form action="{{ url_for('upload_pdf') }}" method="post" enctype="multipart/form-data" class="upload-form">
+            <h4>Subir Nuevo Libro</h4>
+            <input type="text" name="title" placeholder="Título del libro" required>
+            <textarea name="description" placeholder="Descripción del libro" rows="3" required></textarea>
+            <label for="file">Selecciona un archivo PDF:</label>
+            <input type="file" name="file" accept=".pdf" required>
+            <button type="submit">Subir Libro</button>
+        </form>
+        
+        <hr>
+        
+        <!-- Tabla de libros existentes -->
+        <h4>Libros en la Biblioteca</h4>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Título</th>
+                    <th>Nombre de Archivo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for book in books %}
+                <tr>
+                    <td>{{ book.id }}</td>
+                    <td>{{ book.title }}</td>
+                    <td>{{ book.filename }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_book', book_id=book.id) }}" method="post" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este libro y todos sus comentarios?');">
+                            <button type="submit" class="btn-delete">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Sección de Gestión de Usuarios y Comentarios (sin cambios) -->
+    <div class="admin-section">
+        <h3>Gestión de Usuarios</h3>
+        <!-- ... tabla de usuarios ... -->
+    </div>
+    <div class="admin-section">
+        <h3>Gestión de Comentarios</h3>
+        <!-- ... tabla de comentarios ... -->
+    </div>
+
+    <style>
+        .upload-form input, .upload-form textarea {
+            padding: 15px; /* Quitar padding de icono para estos campos */
+        }
+        .upload-form label {
+            margin-top: 15px;
+            color: var(--text-secondary);
+        }
+        .upload-form input[type="file"] {
+            background-color: transparent;
+            border: none;
+            padding: 10px 0;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 40px 0;
+        }
+    </style>
+{% endblock %}
