@@ -1,4 +1,4 @@
-# --- app.py (Versión Segura y Final) ---
+# --- app.py (Versión Segura y Final con Depuración) ---
 
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -12,7 +12,9 @@ from sendgrid.helpers.mail import Mail
 
 # --- LÓGICA PARA CARGAR SECRETOS DE FORMA SEGURA ---
 # Esta sección solo se ejecuta cuando la aplicación corre en Google Cloud
+print("Iniciando la aplicación...")
 if os.environ.get('GAE_ENV', '').startswith('standard'):
+    print("Entorno de Google App Engine detectado. Intentando cargar secreto...")
     try:
         from google.cloud import secretmanager
         
@@ -23,13 +25,23 @@ if os.environ.get('GAE_ENV', '').startswith('standard'):
             response = client.access_secret_version(request={"name": name})
             return response.payload.data.decode("UTF-8")
 
-        # Obtenemos el secreto y lo ponemos en una variable de entorno para que la app lo use
         project_id = "proyecto-de-plataformas-465221"
-        sendgrid_api_key = access_secret_version(project_id, "SENDGRID_API_KEY")
-        os.environ['SENDGRID_API_KEY'] = sendgrid_api_key
+        secret_id = "SENDGRID_API_KEY"
+        
+        print(f"Buscando secreto '{secret_id}' en el proyecto '{project_id}'...")
+        sendgrid_api_key = access_secret_version(project_id, secret_id)
+        
+        if sendgrid_api_key:
+            # Imprimimos solo una parte de la clave para no exponerla en los logs
+            print(f"¡Éxito! Secreto cargado. La clave empieza con: {sendgrid_api_key[:5]}...")
+            os.environ['SENDGRID_API_KEY'] = sendgrid_api_key
+        else:
+            print("ERROR: Secreto obtenido pero está vacío.")
         
     except Exception as e:
-        print(f"No se pudo cargar la clave de API desde Secret Manager: {e}")
+        print(f"FALLO CRÍTICO: No se pudo cargar la clave de API desde Secret Manager: {e}")
+else:
+    print("No se detectó entorno de Google App Engine. Se saltó la carga de secretos.")
 # --- FIN DE LA SECCIÓN DE SECRETOS ---
 
 
@@ -102,13 +114,18 @@ def register():
             db.session.commit()
 
             try:
+                api_key = os.environ.get('SENDGRID_API_KEY')
+                if not api_key:
+                    raise ValueError("La clave de API de SendGrid no está configurada o no se pudo cargar.")
+
+                print("Intentando enviar correo de bienvenida...")
                 message = Mail(
                     from_email='noreply@proyectosgcp.xyz', # Usando el dominio autenticado
                     to_emails=new_user.email,
                     subject='¡Cuenta Creada Exitosamente en la Plataforma!',
                     html_content=f'Hola {new_user.nombre},<br><br>Tu cuenta ha sido creada. Ya puedes iniciar sesión.'
                 )
-                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+                sg = SendGridAPIClient(api_key)
                 response = sg.send(message)
                 print(f"Correo de bienvenida enviado, código: {response.status_code}")
             except Exception as e:
@@ -158,13 +175,18 @@ def enviar_correo():
         asunto = request.form['asunto']
         cuerpo = request.form['cuerpo']
         try:
+            api_key = os.environ.get('SENDGRID_API_KEY')
+            if not api_key:
+                raise ValueError("La clave de API de SendGrid no está configurada.")
+            
+            print("Intentando enviar correo desde la plataforma...")
             message = Mail(
                 from_email='noreply@proyectosgcp.xyz', # Usando el dominio autenticado
                 to_emails=destinatario,
                 subject=asunto,
                 html_content=f"<i>Este correo fue enviado desde la plataforma por {current_user.nombre}.</i><br><br>{cuerpo}"
             )
-            sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+            sg = SendGridAPIClient(api_key)
             response = sg.send(message)
             flash('Correo enviado exitosamente.')
         except Exception as e:
